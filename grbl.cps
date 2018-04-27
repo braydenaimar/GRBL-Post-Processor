@@ -301,6 +301,12 @@ function onComment(message) {
 	writeComment(message);
 }
 
+/** Force output of X, Y, and Z. */
+function forceXYZ() {
+  xOutput.reset();
+  yOutput.reset();
+  zOutput.reset();
+}
 /**
  *  Force output of X, Y, and Z.
  */
