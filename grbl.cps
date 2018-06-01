@@ -178,6 +178,13 @@ var gUnitModal = createModal({}, gFormat); 		// Modal group 6 (G20-21)
 
 var WARNING_WORK_OFFSET = 0;
 
+function onPassThrough(text) {
+    var commands = String(text).split(",");
+    for (text in commands) {
+        writeBlock(commands[text]);
+    }
+}
+
 /**
  *  Collected state.
  */
