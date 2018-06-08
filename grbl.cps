@@ -39,6 +39,7 @@ allowedCircularPlanes = undefined;
  *  @type {Object}
  */
 properties = {
+	debugMode: false,
 	writeMachine: true,
 	writeTools: true,
 	useG28: true, 				  // Disable to avoid G28 output for safe machine retracts - when disabled you must manually ensure safe retracts
@@ -91,6 +92,11 @@ propertyDefinitions = {
 	separateWordsWithSpace: {
 		title: "Separate words with space",
 		description: "Adds spaces between words if 'yes' is selected.",
+		type: "boolean"
+	},
+	debugMode: {
+		title: "Debuging output",
+		description: "Adds identifiers for code run and properties.",
 		type: "boolean"
 	}
 };
@@ -213,8 +219,46 @@ function formatComment(text) {
 function writeComment(text) {
 	writeln(formatComment(text));
 }
+function writeObject(text) {
+	var newText = text;
+	var newLength = newText.length;
+	var indexOffset = 0;
+	var indentLevel = 0;
+	var inString = false;
+
+	for (var i = 0; i < text.length; i++) {
+		if (text[i] === '{') {  // Increase indent
+			indentLevel += 1;
+		} else if (text[i] === '}' && indentLevel) {  // Decrease indent
+			indentLevel -= 1;
+		}
+		if (text[i] === '"') {  // Enter or exit a string
+			inString = !inString;
+		}
+
+		if (text[i].match(/[\{\,\}]/i) && !inString) {  // New line
+			var str = newText.substr(0, i + indexOffset) + (text[i] !== '}' ? text[i] : '') + '\n';
+			for (var x = 0; x < indentLevel; x++) {
+				str += '\t';
+			}
+			str += (text[i] === '}' ? text[i] : '') + newText.substr(i + indexOffset + 1);
+
+			newText = str;
+		}
+
+		indexOffset = newText.length - text.length;
+	}
+
+	newText = newText.replace(/\:/g, ': ');
+	writeln(newText);
+}
 
 function onOpen() {
+
+	if (properties.debugMode) {
+		writeObject('Properties:' + JSON.stringify(properties));
+	}
+
 	if (!properties.separateWordsWithSpace) {
 		setWordSeparator("");
 	}
@@ -322,7 +366,20 @@ function forceAny() {
 	feedOutput.reset();
 }
 
+function onParameter() {
+
+	if (properties.debugMode) {
+		writeln('fn onParameter(' + arguments[0] + ': ' + arguments[1] + ')');
+	}
+
+}
+
 function onSection() {
+
+	if (properties.debugMode) {
+		writeln('fn onSection()');
+	}
+
 	var insertToolCall = isFirstSection() ||
 		currentSection.getForceToolChange && currentSection.getForceToolChange() ||
 		(tool.number != getPreviousSection().getTool().number);
@@ -626,11 +683,19 @@ function onCommand(command) {
 }
 
 function onSectionEnd() {
+	if (properties.debugMode) {
+		writeln('fn onSectionEnd()');
+	}
+
 	writeBlock(gPlaneModal.format(17));
 	forceAny();
 }
 
 function onClose() {
+	if (properties.debugMode) {
+		writeln('fn onClose()');
+	}
+
 	onCommand(COMMAND_COOLANT_OFF);
 
 	if (properties.useG28) {
